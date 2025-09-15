@@ -9,14 +9,23 @@ A cross-platform application that automatically moves your mouse cursor slightly
 
 ## 🚀 **Download & Installation**
 
-### **Option 1: Download from GitHub Releases** (Recommended)
+### **Option 1: Direct Download from Repository** (Easiest)
+
+| Platform | Download Link | Size | Instructions |
+|----------|---------------|------|--------------|
+| **Windows** | [`MouseAutoMover.exe`](./dist/windows/MouseAutoMover.exe) | ~45MB | Double-click to run |
+| **macOS** | [`MouseAutoMover.MacOS`](./dist/macos/MouseAutoMover.MacOS) | ~47MB | Run in Terminal |
+
+*👆 Right-click and "Save Link As" to download*
+
+### **Option 2: Download from GitHub Releases**
 
 1. Go to [Releases](../../releases)
 2. Download the latest version:
    - **Windows**: `MouseAutoMover-Windows.zip`
    - **macOS**: `MouseAutoMover-macOS.tar.gz`
 
-### **Option 2: GitHub Actions Artifacts**
+### **Option 3: GitHub Actions Artifacts**
 
 1. Go to [Actions](../../actions)
 2. Click on the latest successful build
