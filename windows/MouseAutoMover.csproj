@@ -7,6 +7,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <StartupObject>MouseAutoMover.Program</StartupObject>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,12 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Program.cs" />
-    <Compile Remove="MainForm.cs" />
-    <Compile Remove="MainForm.Designer.cs" />
-    <None Include="Program.cs" />
-    <None Include="MainForm.cs" />
-    <None Include="MainForm.Designer.cs" />
+    <Compile Include="../shared/*.cs" />
   </ItemGroup>
 
 </Project>
