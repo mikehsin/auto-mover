@@ -12,10 +12,10 @@ jobs:
     runs-on: windows-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 6.0.x
     
@@ -27,23 +27,56 @@ jobs:
     
     - name: Build Single File Version
       run: |
-        $CSC_PATH = (Get-ChildItem -Path "${env:ProgramFiles(x86)}\Microsoft Visual Studio\*\*\MSBuild\*\Bin\Roslyn\csc.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
-        if (-not $CSC_PATH) {
-          $CSC_PATH = (Get-ChildItem -Path "${env:ProgramFiles}\Microsoft Visual Studio\*\*\MSBuild\*\Bin\Roslyn\csc.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+        # Try to find C# compiler
+        $compilerPaths = @(
+          "${env:ProgramFiles}\dotnet\sdk\*\Roslyn\bincore\csc.dll",
+          "${env:ProgramFiles(x86)}\Microsoft Visual Studio\*\*\MSBuild\*\Bin\Roslyn\csc.exe",
+          "${env:ProgramFiles}\Microsoft Visual Studio\*\*\MSBuild\*\Bin\Roslyn\csc.exe",
+          "${env:WINDIR}\Microsoft.NET\Framework64\v*\csc.exe"
+        )
+        
+        $cscPath = $null
+        foreach ($pattern in $compilerPaths) {
+          $found = Get-ChildItem -Path $pattern -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($found) {
+            $cscPath = $found.FullName
+            break
+          }
         }
-        if (-not $CSC_PATH) {
-          $CSC_PATH = (Get-ChildItem -Path "${env:WINDIR}\Microsoft.NET\Framework64\v*\csc.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -Last 1).FullName
-        }
-        if ($CSC_PATH) {
-          & "$CSC_PATH" /target:winexe /out:MouseAutoMover.exe /reference:System.Windows.Forms.dll /reference:System.Drawing.dll MouseAutoMover_SingleFile.cs
+        
+        if ($cscPath -and $cscPath.EndsWith('.dll')) {
+          # Use dotnet to run csc.dll
+          dotnet "$cscPath" /target:winexe /out:MouseAutoMover.exe /reference:"${env:ProgramFiles}\dotnet\shared\Microsoft.WindowsDesktop.App\*\System.Windows.Forms.dll" /reference:"${env:ProgramFiles}\dotnet\shared\Microsoft.WindowsDesktop.App\*\System.Drawing.dll" MouseAutoMover_SingleFile.cs
+        } elseif ($cscPath) {
+          # Use csc.exe directly
+          & "$cscPath" /target:winexe /out:MouseAutoMover.exe /reference:System.Windows.Forms.dll /reference:System.Drawing.dll MouseAutoMover_SingleFile.cs
         } else {
-          Write-Host "C# compiler not found"
+          Write-Host "Using dotnet publish as fallback"
+          dotnet publish -c Release -o . --self-contained false
+          if (Test-Path "MouseAutoMover.exe") {
+            Write-Host "Build successful with dotnet publish"
+          } else {
+            Write-Host "Build failed - no executable generated"
+            exit 1
+          }
+        }
+      shell: powershell
+    
+    - name: Verify Build Output
+      run: |
+        if (Test-Path "MouseAutoMover.exe") {
+          Write-Host "✅ MouseAutoMover.exe created successfully"
+          Get-Item "MouseAutoMover.exe" | Format-Table Name, Length, LastWriteTime
+        } else {
+          Write-Host "❌ MouseAutoMover.exe not found"
+          Write-Host "Files in current directory:"
+          Get-ChildItem | Format-Table Name, Length
           exit 1
         }
       shell: powershell
     
     - name: Upload Build Artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: MouseAutoMover
         path: |
@@ -52,22 +85,12 @@ jobs:
     
     - name: Create Release
       if: startsWith(github.ref, 'refs/tags/v')
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v2
       with:
-        tag_name: ${{ github.ref }}
-        release_name: Mouse Auto Mover ${{ github.ref }}
+        files: |
+          MouseAutoMover.exe
+          README.md
         draft: false
         prerelease: false
-    
-    - name: Upload Release Asset
-      if: startsWith(github.ref, 'refs/tags/v')
-      uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./MouseAutoMover.exe
-        asset_name: MouseAutoMover.exe
-        asset_content_type: application/octet-stream
