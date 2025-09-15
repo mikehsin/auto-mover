@@ -16,7 +16,7 @@ namespace MouseAutoMover
 
         private Random random;
         private bool isMoving = false;
-        private Timer timer;
+        private System.Windows.Forms.Timer timer;
 
         // UI Controls
         private Label lblInterval;
@@ -47,7 +47,7 @@ namespace MouseAutoMover
             this.btnCancel = new Button();
             this.lblStatus = new Label();
             this.picSettings = new PictureBox();
-            this.timer = new Timer();
+            this.timer = new System.Windows.Forms.Timer();
             this.lblTitle = new Label();
             ((System.ComponentModel.ISupportInitialize)(this.picSettings)).BeginInit();
             this.SuspendLayout();
