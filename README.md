@@ -1,6 +1,6 @@
 # Mouse Auto Mover
 
-A cross-platform application that automatically moves your mouse cursor slightly at regular intervals to prevent your computer from going to sleep or showing as away.
+A cross-platform application that automatically moves your mouse cursor slightly in a certain period of time to allow your computer not going to sleep or showing as away.
 
 ## 🖥️ Platform Support
 
@@ -10,12 +10,14 @@ A cross-platform application that automatically moves your mouse cursor slightly
 ## 🚀 **Download & Installation**
 
 ### **Option 1: Download from GitHub Releases** (Recommended)
+
 1. Go to [Releases](../../releases)
 2. Download the latest version:
    - **Windows**: `MouseAutoMover-Windows.zip`
    - **macOS**: `MouseAutoMover-macOS.tar.gz`
 
 ### **Option 2: GitHub Actions Artifacts**
+
 1. Go to [Actions](../../actions)
 2. Click on the latest successful build
 3. Download artifacts for your platform
@@ -23,12 +25,14 @@ A cross-platform application that automatically moves your mouse cursor slightly
 ## 📱 **How to Run**
 
 ### **Windows Users** ✅ **Simple Double-Click**
+
 1. **Extract** the ZIP file
-2. **Double-click** `MouseAutoMover.exe` 
+2. **Double-click** `MouseAutoMover.exe`
 3. **GUI interface** will open with Start/Stop buttons
 4. **No additional setup** required!
 
 ### **macOS Users** ⚠️ **Terminal Required**
+
 1. **Extract** the TAR.GZ file
 2. **Open Terminal** in the extracted folder
 3. **Make executable**: `chmod +x MouseAutoMover.MacOS`
@@ -39,6 +43,7 @@ A cross-platform application that automatically moves your mouse cursor slightly
 6. **Use commands**: `start`, `stop`, `status`, `help`, `quit`
 
 ### **Why Terminal for macOS?**
+
 - **Security**: macOS Gatekeeper blocks unsigned apps from running via double-click
 - **Permissions**: App needs accessibility permissions to control mouse
 - **Console Interface**: Text-based commands instead of GUI
@@ -70,11 +75,13 @@ A cross-platform application that automatically moves your mouse cursor slightly
 ## 📋 **Troubleshooting**
 
 ### **Windows**
+
 - **Windows Defender warning**: Click "More info" → "Run anyway"
 - **Mouse doesn't move**: Check Windows privacy settings for mouse control
 - **App won't start**: Ensure Windows 10 or later
 
-### **macOS** 
+### **macOS**
+
 - **"Cannot be opened"**: Run from Terminal with `./MouseAutoMover.MacOS`
 - **Permission denied**: Run `chmod +x MouseAutoMover.MacOS` first
 - **Mouse not moving**: Grant Accessibility permissions in System Preferences > Security & Privacy > Accessibility
@@ -83,10 +90,12 @@ A cross-platform application that automatically moves your mouse cursor slightly
 ## 🛠️ **For Developers - Build from Source**
 
 ### Prerequisites
+
 - [.NET 8 SDK](https://dotnet.microsoft.com/download)
 - Git
 
 ### Clone and Build
+
 ```bash
 # Clone repository
 git clone https://github.com/mikehsin/auto-mover.git
@@ -96,16 +105,17 @@ cd auto-mover
 cd windows
 dotnet publish -c Release -r win-x64 --self-contained
 
-# Build macOS version  
+# Build macOS version
 cd ../macos
 dotnet publish -c Release -r osx-x64 --self-contained
 ```
 
 ### Project Structure
+
 ```
 auto-mover/
 ├── windows/          # Windows GUI application
-├── macos/           # macOS console application  
+├── macos/           # macOS console application
 ├── shared/          # Cross-platform core logic
 └── build-scripts/   # Platform build scripts
 ```
