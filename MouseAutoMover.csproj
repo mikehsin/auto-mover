@@ -10,6 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Remove="Program.cs" />
     <Compile Remove="MainForm.cs" />
     <Compile Remove="MainForm.Designer.cs" />

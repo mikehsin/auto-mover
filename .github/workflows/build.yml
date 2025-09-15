@@ -20,6 +20,9 @@ jobs:
         dotnet-version: '8.0.x'
         dotnet-quality: 'ga'
     
+    - name: Install Windows Desktop Workload
+      run: dotnet workload install windowsdesktop
+    
     - name: List available workloads
       run: dotnet workload list --machine-readable
       continue-on-error: true
@@ -28,31 +31,13 @@ jobs:
       run: dotnet restore
       continue-on-error: true
     
-    - name: Build with dotnet (attempt 1)
-      run: dotnet build --no-restore --configuration Release
+    - name: Build with dotnet (main approach)
+      run: dotnet build --configuration Release --no-restore
       continue-on-error: true
     
-    - name: Build Single File Version
+    - name: Build Single File Version (fallback)
       run: |
-        Write-Host "Building single file version to avoid duplicate class issues..."
-        
-        # Try to find C# compiler
-        $compilerPaths = @(
-          "${env:ProgramFiles}\dotnet\sdk\*\Roslyn\bincore\csc.dll",
-          "${env:ProgramFiles(x86)}\Microsoft Visual Studio\*\*\MSBuild\*\Bin\Roslyn\csc.exe", 
-          "${env:ProgramFiles}\Microsoft Visual Studio\*\*\MSBuild\*\Bin\Roslyn\csc.exe",
-          "${env:WINDIR}\Microsoft.NET\Framework64\v*\csc.exe"
-        )
-        
-        $cscPath = $null
-        foreach ($pattern in $compilerPaths) {
-          $found = Get-ChildItem -Path $pattern -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-          if ($found) {
-            $cscPath = $found.FullName
-            Write-Host "Found compiler at: $cscPath"
-            break
-          }
-        }
+        Write-Host "Building using dotnet publish..."
         
         # Clean up any existing executable
         if (Test-Path "MouseAutoMover.exe") {
@@ -60,33 +45,26 @@ jobs:
           Write-Host "Removed existing executable"
         }
         
-        if ($cscPath -and $cscPath.EndsWith('.dll')) {
-          Write-Host "Using dotnet with csc.dll"
-          # Use .NET 8 references
-          $winFormsRef = Get-ChildItem "${env:ProgramFiles}\dotnet\shared\Microsoft.WindowsDesktop.App\8.*\System.Windows.Forms.dll" | Select-Object -First 1
-          $drawingRef = Get-ChildItem "${env:ProgramFiles}\dotnet\shared\Microsoft.WindowsDesktop.App\8.*\System.Drawing.dll" | Select-Object -First 1
-          if ($winFormsRef -and $drawingRef) {
-            dotnet "$cscPath" /target:winexe /out:MouseAutoMover.exe /reference:"$($winFormsRef.FullName)" /reference:"$($drawingRef.FullName)" MouseAutoMover_SingleFile.cs
-          } else {
-            Write-Host "Could not find .NET 8 Windows Forms references, using dotnet publish"
-            dotnet publish -c Release -o . --self-contained false
-          }
-        } elseif ($cscPath) {
-          Write-Host "Using csc.exe directly"
-          & "$cscPath" /target:winexe /out:MouseAutoMover.exe /reference:System.Windows.Forms.dll /reference:System.Drawing.dll MouseAutoMover_SingleFile.cs
+        # Use dotnet publish which should work reliably
+        dotnet publish -c Release -o . --self-contained false
+        
+        # Check if we got an executable
+        if (Test-Path "MouseAutoMover.exe") {
+          Write-Host "✅ Build successful with dotnet publish"
         } else {
-          Write-Host "Using dotnet publish as fallback"
-          # Temporarily rename conflicting files
-          if (Test-Path "Program.cs") { Rename-Item "Program.cs" "Program.cs.bak" }
-          if (Test-Path "MainForm.cs") { Rename-Item "MainForm.cs" "MainForm.cs.bak" }
-          if (Test-Path "MainForm.Designer.cs") { Rename-Item "MainForm.Designer.cs" "MainForm.Designer.cs.bak" }
+          Write-Host "❌ Build failed - checking for other output files"
+          Get-ChildItem -Name "*.exe" | ForEach-Object { Write-Host "Found: $_" }
           
-          dotnet publish -c Release -o . --self-contained false
-          
-          # Restore original files
-          if (Test-Path "Program.cs.bak") { Rename-Item "Program.cs.bak" "Program.cs" }
-          if (Test-Path "MainForm.cs.bak") { Rename-Item "MainForm.cs.bak" "MainForm.cs" }
-          if (Test-Path "MainForm.Designer.cs.bak") { Rename-Item "MainForm.Designer.cs.bak" "MainForm.Designer.cs" }
+          # Try to find the executable in bin folder
+          $binExe = Get-ChildItem -Path "bin" -Name "*.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($binExe) {
+            $fullPath = Get-ChildItem -Path "bin" -Filter "*.exe" -Recurse | Select-Object -First 1
+            Copy-Item $fullPath.FullName "MouseAutoMover.exe"
+            Write-Host "✅ Copied executable from bin folder"
+          } else {
+            Write-Host "❌ No executable found anywhere"
+            exit 1
+          }
         }
       shell: powershell
     
