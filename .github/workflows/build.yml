@@ -1,4 +1,4 @@
-name: Build and Release
+name: Build Cross-Platform Mouse Auto Mover
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
     
     steps:
@@ -18,83 +18,95 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
-        dotnet-quality: 'ga'
     
-    - name: Install Windows Desktop Workload
-      run: dotnet workload install windowsdesktop
-    
-    - name: List available workloads
-      run: dotnet workload list --machine-readable
-      continue-on-error: true
-    
-    - name: Restore dependencies
-      run: dotnet restore
-      continue-on-error: true
-    
-    - name: Build with dotnet (main approach)
-      run: dotnet build --configuration Release --no-restore
-      continue-on-error: true
-    
-    - name: Build Single File Version (fallback)
+    - name: Build Windows Application
       run: |
-        Write-Host "Building using dotnet publish..."
-        
-        # Clean up any existing executable
-        if (Test-Path "MouseAutoMover.exe") {
-          Remove-Item "MouseAutoMover.exe" -Force
-          Write-Host "Removed existing executable"
-        }
-        
-        # Use dotnet publish which should work reliably
-        dotnet publish -c Release -o . --self-contained false
-        
-        # Check if we got an executable
-        if (Test-Path "MouseAutoMover.exe") {
-          Write-Host "✅ Build successful with dotnet publish"
-        } else {
-          Write-Host "❌ Build failed - checking for other output files"
-          Get-ChildItem -Name "*.exe" | ForEach-Object { Write-Host "Found: $_" }
-          
-          # Try to find the executable in bin folder
-          $binExe = Get-ChildItem -Path "bin" -Name "*.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-          if ($binExe) {
-            $fullPath = Get-ChildItem -Path "bin" -Filter "*.exe" -Recurse | Select-Object -First 1
-            Copy-Item $fullPath.FullName "MouseAutoMover.exe"
-            Write-Host "✅ Copied executable from bin folder"
-          } else {
-            Write-Host "❌ No executable found anywhere"
-            exit 1
-          }
-        }
-      shell: powershell
+        cd windows
+        dotnet build --configuration Release
+        dotnet publish --configuration Release --runtime win-x64 --self-contained true --output ../releases/windows
     
-    - name: Verify Build Output
+    - name: Verify Windows Build
       run: |
-        if (Test-Path "MouseAutoMover.exe") {
-          Write-Host "✅ MouseAutoMover.exe created successfully"
-          Get-Item "MouseAutoMover.exe" | Format-Table Name, Length, LastWriteTime
+        if (Test-Path "releases/windows/MouseAutoMover.exe") {
+          Write-Host "✅ Windows build successful"
+          Get-Item "releases/windows/MouseAutoMover.exe" | Format-Table Name, Length
         } else {
-          Write-Host "❌ MouseAutoMover.exe not found"
-          Write-Host "Files in current directory:"
-          Get-ChildItem | Format-Table Name, Length
+          Write-Host "❌ Windows build failed"
           exit 1
         }
       shell: powershell
     
-    - name: Upload Build Artifacts
+    - name: Upload Windows Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: MouseAutoMover
-        path: |
-          MouseAutoMover.exe
-          README.md
+        name: MouseAutoMover-Windows
+        path: releases/windows/
+
+  build-macos:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Build macOS Application
+      run: |
+        cd macos
+        dotnet build --configuration Release
+        dotnet publish --configuration Release --runtime osx-x64 --self-contained true --output ../releases/macos
+    
+    - name: Verify macOS Build
+      run: |
+        if [ -f "releases/macos/MouseAutoMover.MacOS" ]; then
+          echo "✅ macOS build successful"
+          ls -la releases/macos/MouseAutoMover.MacOS
+        else
+          echo "❌ macOS build failed"
+          exit 1
+        fi
+    
+    - name: Upload macOS Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: MouseAutoMover-macOS
+        path: releases/macos/
+
+  create-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download Windows Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: MouseAutoMover-Windows
+        path: releases/windows/
+    
+    - name: Download macOS Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: MouseAutoMover-macOS
+        path: releases/macos/
+    
+    - name: Create Release Archives
+      run: |
+        cd releases
+        zip -r MouseAutoMover-Windows.zip windows/
+        tar -czf MouseAutoMover-macOS.tar.gz macos/
     
     - name: Create Release
-      if: startsWith(github.ref, 'refs/tags/v')
       uses: softprops/action-gh-release@v2
       with:
         files: |
-          MouseAutoMover.exe
+          releases/MouseAutoMover-Windows.zip
+          releases/MouseAutoMover-macOS.tar.gz
           README.md
         draft: false
         prerelease: false
