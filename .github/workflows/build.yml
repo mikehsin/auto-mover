@@ -17,7 +17,11 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 6.0.x
+        dotnet-version: '8.0.x'
+        dotnet-quality: 'release'
+    
+    - name: Install Windows Desktop workload
+      run: dotnet workload install microsoft-windowsdesktop-sdk
     
     - name: Restore dependencies
       run: dotnet restore
@@ -57,7 +61,15 @@ jobs:
         
         if ($cscPath -and $cscPath.EndsWith('.dll')) {
           Write-Host "Using dotnet with csc.dll"
-          dotnet "$cscPath" /target:winexe /out:MouseAutoMover.exe /reference:"${env:ProgramFiles}\dotnet\shared\Microsoft.WindowsDesktop.App\*\System.Windows.Forms.dll" /reference:"${env:ProgramFiles}\dotnet\shared\Microsoft.WindowsDesktop.App\*\System.Drawing.dll" MouseAutoMover_SingleFile.cs
+          # Use .NET 8 references
+          $winFormsRef = Get-ChildItem "${env:ProgramFiles}\dotnet\shared\Microsoft.WindowsDesktop.App\8.*\System.Windows.Forms.dll" | Select-Object -First 1
+          $drawingRef = Get-ChildItem "${env:ProgramFiles}\dotnet\shared\Microsoft.WindowsDesktop.App\8.*\System.Drawing.dll" | Select-Object -First 1
+          if ($winFormsRef -and $drawingRef) {
+            dotnet "$cscPath" /target:winexe /out:MouseAutoMover.exe /reference:"$($winFormsRef.FullName)" /reference:"$($drawingRef.FullName)" MouseAutoMover_SingleFile.cs
+          } else {
+            Write-Host "Could not find .NET 8 Windows Forms references, using dotnet publish"
+            dotnet publish -c Release -o . --self-contained false
+          }
         } elseif ($cscPath) {
           Write-Host "Using csc.exe directly"
           & "$cscPath" /target:winexe /out:MouseAutoMover.exe /reference:System.Windows.Forms.dll /reference:System.Drawing.dll MouseAutoMover_SingleFile.cs
